@@ -1,22 +1,20 @@
 function [xdot] = coax_eom(t,state,control,param)
 
 % States
-x        = state(1);      % x position
-y        = state(2);      % y position
-z        = state(3);      % z position
-u        = state(4);      % u velocity
-v        = state(5);      % v velocity
-w        = state(6);      % w velocity
-roll     = state(7);      % roll angle
-pitch    = state(8);      % pitch angle
-yaw      = state(9);      % yaw angle
-p        = state(10);     % body roll rate
-q        = state(11);     % body pitch rate
-r        = state(12);     % body yaw rate 
-Omega_up = state(13);     % upper rotor speed
-Omega_lo = state(14);     % lower rotor speed
-a_up     = state(15);     % stabilizer bar z-axis x-component
-b_up     = state(16);     % stabilizer bar z-axis y-component
+u        = state(1);      % u velocity
+v        = state(2);      % v velocity
+w        = state(3);      % w velocity
+roll     = state(4);      % roll angle
+pitch    = state(5);      % pitch angle
+yaw      = state(6);      % yaw angle
+p        = state(7);      % body roll rate
+q        = state(8);      % body pitch rate
+r        = state(9);      % body yaw rate 
+Omega_up = state(10);     % upper rotor speed
+Omega_lo = state(11);     % lower rotor speed
+z_barx   = state(12);     % stabilizer bar z-axis x-component
+z_bary   = state(13);     % stabilizer bar z-axis y-component
+z_barz   = state(14);     % stabilizer bar z-axis z-component
 
 % Controls
 u_motup = control(1);
@@ -54,11 +52,32 @@ zeta_blo = param.zeta_blo;
 max_SPangle = param.max_SPangle;
 Omega_max = param.Omega_max;
 
-% Thrust vector directions
+% Upper thrust vector direction
+z_Tupz      = cos(l_up*acos(z_barz));
+if (z_Tupz < 1)
+    temp    = sqrt((1-z_Tupz^2)/(z_barx^2 + z_bary^2));
+    z_Tup   = [z_barx*temp z_bary*temp z_Tupz]';
+else
+    z_Tup   = [0 0 1]';
+end
+zeta        = zeta_mup*Omega_up + zeta_bup;
+RzT         = [cos(zeta) -sin(zeta) 0; sin(zeta) cos(zeta) 0; 0 0 1];
+z_Tup       = RzT*z_Tup;
+
+% Lower thrust vector direction
 a_lo = l_lo*u_serv1*max_SPangle;
 b_lo = l_lo*u_serv2*max_SPangle;
-z_Tup = [cos(a_up)*sin(b_up) -sin(a_up) cos(a_up)*cos(b_up)]'; % rot around body-x then body-y
-z_Tlo = [cos(a_lo)*sin(b_lo) -sin(a_lo) cos(a_lo)*cos(b_lo)]';
+z_SP        = [sin(b_lo) -sin(a_lo)*cos(b_lo) cos(a_lo)*cos(b_lo)]';
+z_Tloz      = cos(l_lo*acos(z_SP(3)));
+if (z_Tloz < 1)
+    temp    = sqrt((1-z_Tloz^2)/(z_SP(1)^2 + z_SP(2)^2));
+    z_Tlo   = [z_SP(1)*temp z_SP(2)*temp z_Tloz]';
+else
+    z_Tlo   = [0 0 1]';
+end
+zeta        = zeta_mlo*Omega_lo + zeta_blo;
+RzT         = [cos(zeta) sin(zeta) 0; -sin(zeta) cos(zeta) 0; 0 0 1];
+z_Tlo       = RzT*z_Tlo;
 
 % Coordinate transformation body to world coordinates
 c_r = cos(roll);
@@ -103,7 +122,7 @@ Fz = -m*g + Rb2w(3,:)*F_thrust;
 Mx = q*r*(Iyy-Izz) - T_up*z_Tup(2)*d_up - T_lo*z_Tlo(2)*d_lo + M_flapup(1) + M_flaplo(1);
 My = p*r*(Izz-Ixx) + T_up*z_Tup(1)*d_up + T_lo*z_Tlo(1)*d_lo + M_flapup(2) + M_flaplo(2);
 Mz = p*q*(Ixx-Iyy) - k_Mup*Omega_up*Omega_up + k_Mlo*Omega_lo*Omega_lo;
-%[Mx My Mz]
+
 % State derivatives
 xddot = 1/m*Fx;
 yddot = 1/m*Fy;
@@ -122,28 +141,35 @@ Omega_lo_des = rs_mlo*u_motlo + rs_blo;
 Omega_updot = 1/Tf_motup*(Omega_up_des - Omega_up);
 Omega_lodot = 1/Tf_motlo*(Omega_lo_des - Omega_lo);
 
-a_updot = -1/Tf_up*a_up - l_up*p;
-b_updot = -1/Tf_up*b_up - l_up*q;
+b_z_bardotz = 1/Tf_up*acos(z_barz)*sqrt(z_barx^2 + z_bary^2);
+if (b_z_bardotz == 0)
+    b_z_bardot = [0 0 0]';
+else
+    temp = z_barz*b_z_bardotz/(z_barx^2+z_bary^2);
+    b_z_bardot = [-z_barx*temp -z_bary*temp b_z_bardotz]';
+end
+
+z_barxdot   = b_z_bardot(1) - q*z_barz + r*z_bary;
+z_barydot   = b_z_bardot(2) - r*z_barx + p*z_barz;
+z_barzdot   = b_z_bardot(3) - p*z_bary + q*z_barx;
 
 % Function outputs
-xdot = zeros(16,1);
+xdot = zeros(14,1);
 
-xdot(1)  = state(4);
-xdot(2)  = state(5);
-xdot(3)  = state(6);
-xdot(4)  = xddot;
-xdot(5)  = yddot;
-xdot(6)  = zddot;
-xdot(7)  = rolldot;
-xdot(8)  = pitchdot;
-xdot(9)  = yawdot;
-xdot(10) = pdot;
-xdot(11) = qdot;
-xdot(12) = rdot;
-xdot(13) = Omega_updot;
-xdot(14) = Omega_lodot;
-xdot(15) = a_updot;
-xdot(16) = b_updot;
+xdot(1)  = xddot;
+xdot(2)  = yddot;
+xdot(3)  = zddot;
+xdot(4)  = rolldot;
+xdot(5)  = pitchdot;
+xdot(6)  = yawdot;
+xdot(7)  = pdot;
+xdot(8)  = qdot;
+xdot(9)  = rdot;
+xdot(10) = Omega_updot;
+xdot(11) = Omega_lodot;
+xdot(12) = z_barxdot;
+xdot(13) = z_barydot;
+xdot(14) = z_barzdot;
 
 end
 

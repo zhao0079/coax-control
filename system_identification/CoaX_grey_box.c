@@ -98,53 +98,48 @@ void compute_dx(
     x[16] = z_barz/norm_z_bar;
 
     // Upper thrust vector direction
-    double z_Tupz         = cos(l_up*acos(z_barz));
-
+    double z_Tupz = cos(l_up*acos(z_barz));
     double z_Tup_p[3] = {0,0,1};
     if (z_Tupz < 1){
-      double temp       = sqrt((1-z_Tupz*z_Tupz)/(z_barx*z_barx + z_bary*z_bary));
+      double temp = sqrt((1-z_Tupz*z_Tupz)/(z_barx*z_barx + z_bary*z_bary));
         z_Tup_p[0] = z_barx*temp;
         z_Tup_p[1] = z_bary*temp;
         z_Tup_p[2] = z_Tupz;
     }
-    double zeta           = zeta_mup*Omega_up + zeta_bup;
-
+    double zeta = zeta_mup*Omega_up + zeta_bup;
     double z_Tup[3];
-    z_Tup[0]       = cos(zeta)*z_Tup_p[0] - sin(zeta)*z_Tup_p[1];
-    z_Tup[1]       = sin(zeta)*z_Tup_p[0] + cos(zeta)*z_Tup_p[1];
-    z_Tup[2]       = z_Tup_p[2];
+    z_Tup[0] = cos(zeta)*z_Tup_p[0] - sin(zeta)*z_Tup_p[1];
+    z_Tup[1] = sin(zeta)*z_Tup_p[0] + cos(zeta)*z_Tup_p[1];
+    z_Tup[2] = z_Tup_p[2];
 
     // Lower thrust vector direction
-    double a_lo           = l_lo*u_serv1*max_SPangle;
-    double b_lo           = l_lo*u_serv2*max_SPangle;
-
+    double a_SP = u_serv1*max_SPangle;
+    double b_SP = u_serv2*max_SPangle;
     double z_SP[3];
-    z_SP[0]        = sin(b_lo);
-    z_SP[1]        = -sin(a_lo)*cos(b_lo);
-    z_SP[2]        = cos(a_lo)*cos(b_lo);
-
-    double z_Tloz         = cos(l_lo*acos(z_SP[2]));
+    z_SP[0] = sin(b_SP);
+    z_SP[1] = -sin(a_SP)*cos(b_SP);
+    z_SP[2] = cos(a_SP)*cos(b_SP);
+    double z_Tloz = cos(l_lo*acos(z_SP[2]));
     double z_Tlo_p[3] = {0,0,1};
     if (z_Tloz < 1){
-      double temp       = sqrt((1-z_Tloz*z_Tloz)/(z_SP[1]*z_SP[1] + z_SP[2]*z_SP[2]));
-        z_Tlo_p[0] = z_SP[1]*temp;
-        z_Tlo_p[1] = z_SP[2]*temp;
+      double temp = sqrt((1-z_Tloz*z_Tloz)/(z_SP[0]*z_SP[0] + z_SP[1]*z_SP[1]));
+        z_Tlo_p[0] = z_SP[0]*temp;
+        z_Tlo_p[1] = z_SP[1]*temp;
         z_Tlo_p[2] = z_Tloz;
     }
-    zeta           = zeta_mlo*Omega_lo + zeta_blo;
-
+    zeta = zeta_mlo*Omega_lo + zeta_blo;
     double z_Tlo[3];
-    z_Tlo[0]       = cos(zeta)*z_Tlo_p[0] + sin(zeta)*z_Tlo_p[1];
-    z_Tlo[1]       = -sin(zeta)*z_Tlo_p[0] + cos(zeta)*z_Tlo_p[1];
-    z_Tlo[2]       = z_Tlo_p[2];
+    z_Tlo[0] = cos(zeta)*z_Tlo_p[0] + sin(zeta)*z_Tlo_p[1];
+    z_Tlo[1] = -sin(zeta)*z_Tlo_p[0] + cos(zeta)*z_Tlo_p[1];
+    z_Tlo[2] = z_Tlo_p[2];
 
     // Coordinate transformation body to world coordinates
-    double c_r      = cos(roll);
-    double s_r      = sin(roll);
-    double c_p      = cos(pitch);
-    double s_p      = sin(pitch);
-    double c_y      = cos(yaw);
-    double s_y      = sin(yaw);
+    double c_r = cos(roll);
+    double s_r = sin(roll);
+    double c_p = cos(pitch);
+    double s_p = sin(pitch);
+    double c_y = cos(yaw);
+    double s_y = sin(yaw);
 
     double Rb2w0[3];
     Rb2w0[0] = c_p*c_y; // first row of Rb2w
@@ -163,11 +158,10 @@ void compute_dx(
 
     // Flapping Moments
     double cp[3];
-    cp[0]   = -z_Tup[1]; // z_b x z_Tup
-    cp[1]   = z_Tup[0];
-    cp[2]   = 0;
+    cp[0] = -z_Tup[1]; // z_b x z_Tup
+    cp[1] = z_Tup[0];
+    cp[2] = 0;
     double norm_cp = sqrt(cp[0]*cp[0] + cp[1]*cp[1] + cp[2]*cp[2]);
-
     double M_flapup[3] = {0,0,0};
     if (fabs(norm_cp) > 1e-6){
         M_flapup[0] = 2*k_springup*cp[0]/norm_cp*acos(z_Tup[2]);
@@ -175,11 +169,10 @@ void compute_dx(
         M_flapup[2] = 2*k_springup*cp[2]/norm_cp*acos(z_Tup[2]);
     }
 
-    cp[0]   = -z_Tlo[1]; // z_b x z_Tlo
-    cp[1]   = z_Tlo[0];
-    cp[2]   = 0;
+    cp[0] = -z_Tlo[1]; // z_b x z_Tlo
+    cp[1] = z_Tlo[0];
+    cp[2] = 0;
     norm_cp = sqrt(cp[0]*cp[0] + cp[1]*cp[1] + cp[2]*cp[2]);
-
     double M_flaplo[3] = {0,0,0};
     if (fabs(norm_cp) > 1e-6){
         M_flaplo[0] = 2*k_springlo*cp[0]/norm_cp*acos(z_Tlo[2]);
@@ -229,7 +222,7 @@ void compute_dx(
     double Omega_updot  = 1/Tf_motup*(Omega_up_des - Omega_up);
     double Omega_lodot  = 1/Tf_motlo*(Omega_lo_des - Omega_lo);
 
-    double b_z_bardotz       = 1/Tf_up*acos(z_barz)*sqrt(z_barx*z_barx + z_bary*z_bary);
+    double b_z_bardotz = 1/Tf_up*acos(z_barz)*sqrt(z_barx*z_barx + z_bary*z_bary);
     double b_z_bardot[3] = {0,0,0};
     if (fabs(b_z_bardotz) > 1e-6){
       double temp          = z_barz*b_z_bardotz/(z_barx*z_barx + z_bary*z_bary);
@@ -238,9 +231,9 @@ void compute_dx(
         b_z_bardot[2] = b_z_bardotz;
     }
 
-    double z_barxdot = b_z_bardot[1] - wq*z_barz + wr*z_bary;
-    double z_barydot = b_z_bardot[2] - wr*z_barx + wp*z_barz;
-    double z_barzdot = b_z_bardot[3] - wp*z_bary + wq*z_barx;
+    double z_barxdot = b_z_bardot[0] - wq*z_barz + wr*z_bary;
+    double z_barydot = b_z_bardot[1] - wr*z_barx + wp*z_barz;
+    double z_barzdot = b_z_bardot[2] - wp*z_bary + wq*z_barx;
 
     dx[0]  = x[3];
     dx[1]  = x[4];
@@ -258,6 +251,7 @@ void compute_dx(
     dx[13] = Omega_lodot;
     dx[14] = z_barxdot;
     dx[15] = z_barydot;
+    dx[16] = z_barzdot;
 
 }
 
